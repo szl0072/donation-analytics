@@ -6,6 +6,7 @@ class InputStream:
     def __init__(self, percent):
         
         self.donationList = []
+        # store the percentile from the percentile input file
         self.percent = percent
         self.numberOfTransactions = 0
         self.totalAmount = 0
@@ -24,7 +25,7 @@ class InputStream:
 
     def percentile(self):
         """
-        Returns the percentile base on the cleares rank algo {\displaystyle n=\left\lceil {\frac {P}{100}}\times N\right\rceil .}
+        Returns the percentile base on the nearest-rank method {\displaystyle n=\left\lceil {\frac {P}{100}}\times N\right\rceil .}
         :rtype: int
         """
 
@@ -41,11 +42,6 @@ class Transaction(object):
         self.cmte_id = info[0]
 
         #print(info)
-        # if len(info[7]) > 0:
-
-        #     self.name = info[7]
-        # else:
-        #     self.name = None
 
         if len(info[10]) >= 5:
             if info[10][:5].isdigit():
@@ -93,8 +89,11 @@ def main():
     if len(sys.argv) - 1 != 3:
         raise Exception("Arguments should be three. two input data file paths, and one output file path")
 
+
+    # input file 
     percentile_file = sys.argv[2]
 
+    # get the info for percentile
     with open(percentile_file) as f:
         percent = f.readline()
         try:
@@ -107,33 +106,37 @@ def main():
 
     percentile_by_zip_path = sys.argv[3]
 
+    # map to store the key: value
+    # key is zip + name
+    # value is donation year 
     zip_map = dict()
 
-
+    # list of output result
     zip_stream_result = []
 
-    m = InputStream(percent)
+    inputObject = InputStream(percent)
     with open(sys.argv[1]) as f:
         for line in f:
             t = Transaction(line)
 
             if t.valid() and t.validate_date() and t.validate_zipcode():
-
+                # key is the zipcode + name to identify unique donor
                 key = t.zipcode + t.name
 
                 if key not in zip_map:
 
                     zip_map[key] = t.yy
+                # if we saw this donor before     
                 elif key in zip_map and zip_map[key] < t.yy:
 
-                    m.add(t.transaction_amount)
-                    #print(key)
+                    inputObject.add(t.transaction_amount)
 
 
-                #if len(m.donationList) > 0:
-                    zip_stream_result.append([t.cmte_id, t.zipcode, str(t.yy), str(round(m.percentile())),
-                                   str(round(m.totalAmount)),
-                                   str(m.numberOfTransactions)])
+
+                    zip_stream_result.append([t.cmte_id, t.zipcode, str(t.yy), str(round(inputObject.percentile())),
+                                   str(round(inputObject.totalAmount)),
+                                   str(inputObject.numberOfTransactions)])
+                # if the order is out of order chronologically, we want to update the ealiest year in the key map, for that donor 
                 elif key in zip_map and zip_map[key] > t.yy:
                     zip_map[key] = t.yy
 
